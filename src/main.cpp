@@ -193,7 +193,6 @@ void IRAM_ATTR buttonISR()
 
 void doorTaskFunction(void *pvParameters)
 {
-
     esp_task_wdt_add(NULL);
 
     bool doorCommand;
@@ -229,13 +228,7 @@ void doorTaskFunction(void *pvParameters)
                 myServo.write(90);
                 Serial.println("Door closed");
             }
-
             xEventGroupClearBits(systemEventGroup, DOOR_RESOURCE_BIT);
-
-            FirebaseUpdate update;
-            update.type = FirebaseUpdate::DOOR_STATUS;
-            update.value = doorCommand;
-            xQueueSend(firebaseUpdateQueue, &update, portMAX_DELAY);
         }
 
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -251,7 +244,6 @@ void bellTaskFunction(void *pvParameters)
 
     for (;;)
     {
-
         esp_task_wdt_reset();
 
         if (xQueueReceive(bellCommandQueue, &ringCommand, pdMS_TO_TICKS(100)) == pdPASS)
@@ -266,7 +258,6 @@ void bellTaskFunction(void *pvParameters)
 
             if ((bits & BELL_RESOURCE_BIT) == 0)
             {
-
                 xEventGroupSetBits(systemEventGroup, BELL_RESOURCE_BIT);
             }
 
@@ -293,17 +284,14 @@ void bellTaskFunction(void *pvParameters)
 
 void btnTaskFunction(void *pvParameters)
 {
-
     esp_task_wdt_add(NULL);
 
     unsigned long currentMillis;
     bool ringCommand;
-    bool doorCommand;
     static bool lastButtonState = HIGH;
 
     for (;;)
     {
-
         esp_task_wdt_reset();
 
         if (buttonInterruptTriggered)
@@ -313,13 +301,6 @@ void btnTaskFunction(void *pvParameters)
             if (currentMillis - lastPressTime > DEBOUNCE_DELAY)
             {
                 lastPressTime = currentMillis;
-
-                bool doorState = safeGetDoorStatus();
-
-                doorCommand = !doorState;
-                xQueueSend(doorCommandQueue, &doorCommand, portMAX_DELAY);
-
-                vTaskDelay(pdMS_TO_TICKS(1000));
 
                 ringCommand = (pressCount == 0);
                 xQueueSend(bellCommandQueue, &ringCommand, portMAX_DELAY);
@@ -333,7 +314,6 @@ void btnTaskFunction(void *pvParameters)
         currentMillis = millis();
         if (currentMillis - lastPressTime > RESET_RING_TIME && pressCount > 0)
         {
-
             FirebaseUpdate update;
             update.type = FirebaseUpdate::RING_STATUS;
             update.value = false;
@@ -348,14 +328,12 @@ void btnTaskFunction(void *pvParameters)
 
 void syncFirebaseTaskFunction(void *pvParameters)
 {
-
     esp_task_wdt_add(NULL);
 
     static bool lastDoorState = false;
 
     for (;;)
     {
-
         esp_task_wdt_reset();
 
         EventBits_t bits = xEventGroupWaitBits(
@@ -367,7 +345,6 @@ void syncFirebaseTaskFunction(void *pvParameters)
 
         if ((bits & FIREBASE_BIT) == 0)
         {
-
             xEventGroupSetBits(systemEventGroup, FIREBASE_BIT);
 
             try
@@ -385,6 +362,7 @@ void syncFirebaseTaskFunction(void *pvParameters)
             {
                 xQueueSend(doorCommandQueue, &currentDoorState, 0);
                 lastDoorState = currentDoorState;
+                Serial.println("Door state changed from Firebase: " + String(currentDoorState ? "Open" : "Closed"));
             }
 
             xEventGroupClearBits(systemEventGroup, FIREBASE_BIT);
@@ -396,14 +374,12 @@ void syncFirebaseTaskFunction(void *pvParameters)
 
 void firebaseUpdateTaskFunction(void *pvParameters)
 {
-
     esp_task_wdt_add(NULL);
 
     FirebaseUpdate update;
 
     for (;;)
     {
-
         esp_task_wdt_reset();
 
         if (xQueueReceive(firebaseUpdateQueue, &update, pdMS_TO_TICKS(100)) == pdPASS)
@@ -448,7 +424,6 @@ void firebaseUpdateTaskFunction(void *pvParameters)
             }
             else
             {
-
                 xQueueSendToFront(firebaseUpdateQueue, &update, 0);
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
@@ -602,3 +577,4 @@ bool safeGetDoorStatus()
     }
     return status;
 }
+
