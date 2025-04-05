@@ -171,7 +171,6 @@ void setup()
 
 void loop()
 {
-
     esp_task_wdt_reset();
 
     checkTaskStacks();
@@ -329,9 +328,7 @@ void btnTaskFunction(void *pvParameters)
 void syncFirebaseTaskFunction(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
-
     static bool lastDoorState = false;
-
     for (;;)
     {
         esp_task_wdt_reset();
@@ -346,7 +343,6 @@ void syncFirebaseTaskFunction(void *pvParameters)
         if ((bits & FIREBASE_BIT) == 0)
         {
             xEventGroupSetBits(systemEventGroup, FIREBASE_BIT);
-
             try
             {
                 controller->streamData();
@@ -375,9 +371,7 @@ void syncFirebaseTaskFunction(void *pvParameters)
 void firebaseUpdateTaskFunction(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
-
     FirebaseUpdate update;
-
     for (;;)
     {
         esp_task_wdt_reset();
@@ -394,9 +388,7 @@ void firebaseUpdateTaskFunction(void *pvParameters)
 
             if ((bits & FIREBASE_BIT) == 0)
             {
-
                 xEventGroupSetBits(systemEventGroup, FIREBASE_BIT);
-
                 if (update.type == FirebaseUpdate::DOOR_STATUS)
                 {
                     if (safeSetDoorStatus(update.value))
@@ -419,7 +411,6 @@ void firebaseUpdateTaskFunction(void *pvParameters)
                         Serial.println("Failed to update ring status");
                     }
                 }
-
                 xEventGroupClearBits(systemEventGroup, FIREBASE_BIT);
             }
             else
@@ -428,29 +419,22 @@ void firebaseUpdateTaskFunction(void *pvParameters)
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
         }
-
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
 void stackTestTaskFunction(void *pvParameters)
 {
-
     esp_task_wdt_add(NULL);
-
     const int MARGIN = 512;
     int stackSize = 512;
 
     for (;;)
     {
-
         esp_task_wdt_reset();
-
         if (stackSize < 4096)
         {
-
             char buffer[stackSize];
-
             for (int i = 0; i < stackSize; i++)
             {
                 buffer[i] = i % 256;
@@ -462,11 +446,9 @@ void stackTestTaskFunction(void *pvParameters)
 
             if (remaining > MARGIN)
             {
-
                 stackSize += 256;
             }
         }
-
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
