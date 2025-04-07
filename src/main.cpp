@@ -12,7 +12,7 @@
 
 constexpr unsigned long DEBOUNCE_DELAY = 3000;
 constexpr unsigned long RESET_RING_TIME = 20000;
-constexpr TickType_t FIREBASE_SYNC_INTERVAL = pdMS_TO_TICKS(5000);
+constexpr TickType_t FIREBASE_SYNC_INTERVAL = pdMS_TO_TICKS(2000);
 constexpr TickType_t BUTTON_POLL_INTERVAL = pdMS_TO_TICKS(50);
 constexpr int WDT_TIMEOUT = 30;
 
@@ -108,6 +108,23 @@ void setup()
     }
 
     controller->setup();
+    
+    Serial.println("Performing initial Firebase sync...");
+    try {
+        controller->streamData();
+        bool initialDoorState = safeGetDoorStatus();
+        Serial.println("Initial door state from Firebase: " + String(initialDoorState ? "Open" : "Closed"));
+        
+        if (initialDoorState) {
+            myServo.write(20);
+            Serial.println("Door opened during initial sync");
+        } else {
+            myServo.write(90); 
+            Serial.println("Door closed during initial sync");
+        }
+    } catch (...) {
+        Serial.println("Error in initial Firebase sync");
+    }
 
     initI2S();
 
@@ -140,7 +157,7 @@ void setup()
         "SyncFirebaseTask",
         16384,
         NULL,
-        1,
+        3,
         &syncFirebaseTaskHandle);
 
     xTaskCreate(
@@ -162,11 +179,6 @@ void setup()
     bool doorState = safeGetDoorStatus();
     Serial.println(doorState ? "Door is open" : "Door is closed");
 
-    if (doorState)
-    {
-        bool command = true;
-        xQueueSend(doorCommandQueue, &command, portMAX_DELAY);
-    }
 }
 
 void loop()
@@ -328,7 +340,7 @@ void btnTaskFunction(void *pvParameters)
 void syncFirebaseTaskFunction(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
-    static bool lastDoorState = false;
+    static bool lastDoorState = safeGetDoorStatus(); // Initialize with current state
     for (;;)
     {
         esp_task_wdt_reset();
@@ -378,7 +390,6 @@ void firebaseUpdateTaskFunction(void *pvParameters)
 
         if (xQueueReceive(firebaseUpdateQueue, &update, pdMS_TO_TICKS(100)) == pdPASS)
         {
-
             EventBits_t bits = xEventGroupWaitBits(
                 systemEventGroup,
                 FIREBASE_BIT,
