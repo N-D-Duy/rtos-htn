@@ -12,7 +12,7 @@
 
 constexpr unsigned long DEBOUNCE_DELAY = 3000;
 constexpr unsigned long RESET_RING_TIME = 20000;
-constexpr TickType_t FIREBASE_SYNC_INTERVAL = pdMS_TO_TICKS(2000);
+constexpr TickType_t FIREBASE_SYNC_INTERVAL = pdMS_TO_TICKS(1000);
 constexpr TickType_t BUTTON_POLL_INTERVAL = pdMS_TO_TICKS(50);
 constexpr int WDT_TIMEOUT = 30;
 
@@ -259,7 +259,6 @@ void bellTaskFunction(void *pvParameters)
 
         if (xQueueReceive(bellCommandQueue, &ringCommand, pdMS_TO_TICKS(100)) == pdPASS)
         {
-
             EventBits_t bits = xEventGroupWaitBits(
                 systemEventGroup,
                 BELL_RESOURCE_BIT,
@@ -275,7 +274,6 @@ void bellTaskFunction(void *pvParameters)
             if (ringCommand)
             {
                 playTone(2000, 500, 1);
-
                 FirebaseUpdate update;
                 update.type = FirebaseUpdate::RING_STATUS;
                 update.value = true;
@@ -296,7 +294,6 @@ void bellTaskFunction(void *pvParameters)
 void btnTaskFunction(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
-
     unsigned long currentMillis;
     bool ringCommand;
     static bool lastButtonState = HIGH;
@@ -312,13 +309,10 @@ void btnTaskFunction(void *pvParameters)
             if (currentMillis - lastPressTime > DEBOUNCE_DELAY)
             {
                 lastPressTime = currentMillis;
-
                 ringCommand = (pressCount == 0);
                 xQueueSend(bellCommandQueue, &ringCommand, portMAX_DELAY);
-
                 pressCount++;
             }
-
             buttonInterruptTriggered = false;
         }
 
@@ -329,10 +323,8 @@ void btnTaskFunction(void *pvParameters)
             update.type = FirebaseUpdate::RING_STATUS;
             update.value = false;
             xQueueSend(firebaseUpdateQueue, &update, portMAX_DELAY);
-
             pressCount = 0;
         }
-
         vTaskDelay(BUTTON_POLL_INTERVAL);
     }
 }
@@ -340,7 +332,7 @@ void btnTaskFunction(void *pvParameters)
 void syncFirebaseTaskFunction(void *pvParameters)
 {
     esp_task_wdt_add(NULL);
-    static bool lastDoorState = safeGetDoorStatus(); // Initialize with current state
+    static bool lastDoorState = safeGetDoorStatus();
     for (;;)
     {
         esp_task_wdt_reset();
